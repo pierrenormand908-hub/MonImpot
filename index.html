@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MonImpot</title>
+    <link rel="apple-touch-icon" href="icone.png">
+    <link rel="icon" href="icone.png">
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f4f8; padding: 15px; color: #333; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); max-width: 550px; margin: auto; }
+        h2 { color: #2c3e50; text-align: center; border-bottom: 3px solid #3498db; padding-bottom: 10px; }
+        .section-title { font-size: 0.85em; color: #2980b9; text-transform: uppercase; margin-top: 15px; font-weight: bold; background: #ebf5fb; padding: 8px; border-radius: 5px; }
+        label { display: block; margin-top: 10px; font-weight: 600; font-size: 0.85em; color: #444; }
+        input, select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 1em; }
+        button { width: 100%; padding: 15px; background: #3498db; color: white; border: none; border-radius: 8px; margin-top: 25px; font-size: 1.2em; font-weight: bold; cursor: pointer; }
+        .result-box { margin-top: 20px; padding: 15px; border-radius: 10px; background: #fff; border: 2px solid #3498db; display: none; }
+        .row { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .total-row { font-weight: bold; color: #2980b9; font-size: 1.2em; margin-top: 10px; }
+        .positive { color: #27ae60; }
+        .negative { color: #e74c3c; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>MonImpot</h2>
+
+    <div class="section-title">0. Situation Familiale</div>
+    <label>État Civil</label>
+    <select id="etatCivil">
+        <option value="celibataire">Célibataire</option>
+        <option value="conjoint">Marié / Conjoint de fait</option>
+    </select>
+    <label>Revenu Net de la conjointe (Case 275 - Prov)</label>
+    <input type="number" id="revenuConjoint" placeholder="Mettre 0 si elle n'a pas de revenu">
+
+    <div class="section-title">1. Tes Revenus Bruts</div>
+    <label>Salaire Brut Fédéral (T4 - Case 14)</label>
+    <input type="number" id="brutFedSal" placeholder="0">
+    <label>Salaire Brut Provincial (RL-1 - Case A)</label>
+    <input type="number" id="brutProvSal" placeholder="0">
+    <label>RRQ Brut Fédéral (T4A-P - Case 20)</label>
+    <input type="number" id="brutFedRRQ" placeholder="0">
+    <label>RRQ Brut Provincial (RL-2 - Case C)</label>
+    <input type="number" id="brutProvRRQ" placeholder="0">
+    <label>Pension de Vieillesse PSV (T4A-OAS - Case 18)</label>
+    <input type="number" id="brutPSV" placeholder="0">
+
+    <div class="section-title">2. Impôts Retenus</div>
+    <label>Impôt fédéral SALAIRE (T4 - Case 22)</label>
+    <input type="number" id="retFedSal" placeholder="0">
+    <label>Impôt provincial SALAIRE (RL-1 - Case E)</label>
+    <input type="number" id="retProvSal" placeholder="0">
+    <label>Impôt fédéral RRQ (T4A-P - Case 22)</label>
+    <input type="number" id="retFedRRQ" placeholder="0">
+    <label>Impôt provincial RRQ (RL-2 - Case J)</label>
+    <input type="number" id="retProvRRQ" placeholder="0">
+
+    <div class="section-title">3. Crédits</div>
+    <label>Frais Médicaux (Total du couple)</label>
+    <input type="number" id="meds" placeholder="0">
+    <label>Loyer annuel total</label>
+    <input type="number" id="loyer" placeholder="0">
+
+    <button onclick="calculer()">CALCULER MES RÉSULTATS</button>
+
+    <div id="resultats" class="result-box">
+        <div class="row"><span>Solde Fédéral :</span> <span id="soldeFed">0</span></div>
+        <div class="row"><span>Solde Provincial :</span> <span id="soldeProv">0</span></div>
+        <div class="row total-row"><span>RÉSULTAT TOTAL :</span> <span id="totalFinal">0</span></div>
+    </div>
+</div>
+
+<script>
+function calculer() {
+    const etat = document.getElementById('etatCivil').value;
+    const revConjoint = parseFloat(document.getElementById('revenuConjoint').value) || 0;
+
+    const bFed = (parseFloat(document.getElementById('brutFedSal').value) || 0) + 
+                  (parseFloat(document.getElementById('brutFedRRQ').value) || 0) + 
+                  (parseFloat(document.getElementById('brutPSV').value) || 0);
+    
+    const bProv = (parseFloat(document.getElementById('brutProvSal').value) || 0) + 
+                   (parseFloat(document.getElementById('brutProvRRQ').value) || 0) + 
+                   (parseFloat(document.getElementById('brutPSV').value) || 0);
+
+    const rFed = (parseFloat(document.getElementById('retFedSal').value) || 0) + 
+                  (parseFloat(document.getElementById('retFedRRQ').value) || 0);
+    
+    const rProv = (parseFloat(document.getElementById('retProvSal').value) || 0) + 
+                   (parseFloat(document.getElementById('retProvRRQ').value) || 0);
+
+    const meds = parseFloat(document.getElementById('meds').value) || 0;
+    const loyer = parseFloat(document.getElementById('loyer').value) || 0;
+
+    // --- FÉDÉRAL ---
+    let creditConjointFed = (etat === "conjoint") ? Math.max(0, 15705 - revConjoint) : 0;
+    let impFedDu = Math.max(0, bFed - 15705 - creditConjointFed) * 0.15;
+    let creditMedFed = Math.max(0, meds - ((bFed + revConjoint) * 0.03)) * 0.15;
+    impFedDu -= creditMedFed;
+    let soldeF = rFed - impFedDu;
+
+    // --- PROVINCIAL ---
+    // Crédit de base + Crédit pour conjoint (environ 18k chaque)
+    let baseProv = 18056;
+    let creditConjointProv = (etat === "conjoint") ? Math.max(0, 18056 - revConjoint) : 0;
+    let impProvDu = Math.max(0, bProv - baseProv - creditConjointProv) * 0.14;
+    
+    // Crédit solidarité ajusté (famille)
+    let seuilSolidarite = (etat === "conjoint") ? 45000 : 38000;
+    let creditSolidarite = ((bProv + revConjoint) < seuilSolidarite && loyer > 0) ? 1000 : 0;
+    
+    impProvDu -= creditSolidarite;
+    let soldeP = rProv - impProvDu;
+
+    document.getElementById('soldeFed').innerText = soldeF.toFixed(2) + "$";
+    document.getElementById('soldeFed').className = soldeF >= 0 ? "positive" : "negative";
+    document.getElementById('soldeProv').innerText = soldeP.toFixed(2) + "$";
+    document.getElementById('soldeProv').className = soldeP >= 0 ? "positive" : "negative";
+    let total = soldeF + soldeP;
+    document.getElementById('totalFinal').innerText = total.toFixed(2) + "$";
+    document.getElementById('totalFinal').className = total >= 0 ? "positive" : "negative";
+    document.getElementById('resultats').style.display = 'block';
+}
+</script>
+
+</body>
+</html>
